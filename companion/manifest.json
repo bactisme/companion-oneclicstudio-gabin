@@ -1,0 +1,26 @@
+{
+	"id": "generic-osc",
+	"name": "generic-osc",
+	"shortname": "osc",
+	"description": "Gabin (autoswitch tool for OBS, VMIX, OSC. Based on the generic OSC plugin)",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-generic-osc.git",
+	"bugs": "https://github.com/bitfocus/companion-module-generic-osc/issues",
+	"maintainers": [
+		{
+			"name": "Baptiste Michaud",
+			"email": "baptiste@humanoid.fr"
+		}
+	],
+	"legacyIds": ["direct_osc", "osc"],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../osc.js"
+	},
+	"manufacturer": "OneClickStudio",
+	"products": ["Gabin"],
+	"keywords": ["Protocol", "Generic", "Gabin", "OSC"]
+}
