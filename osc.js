@@ -1,5 +1,6 @@
 const { InstanceBase, Regex, runEntrypoint } = require('@companion-module/base')
 const UpgradeScripts = require('./upgrades')
+var osc = require('osc');
 
 class OSCInstance extends InstanceBase {
 	constructor(internal) {
@@ -7,12 +8,136 @@ class OSCInstance extends InstanceBase {
 	}
 
 	async init(config) {
-		this.config = config
+		this.config = config;
 
-		this.updateStatus('ok')
+		this.updateStatus('ok');
 
-		this.updateActions() // export actions
+		this.updateActions(); // export actions
+
+		this.init_variable();
+
+		this.init_osc();
+
 	}
+
+	registerToGabin() {
+		var path = "/register/shot"; 
+
+		this.sendOscMessage(path, [
+			{
+				type: 's',
+				value: '127.0.0.1',
+			},
+			{
+				type: 's',
+				value: this.config.feedbackPort,
+			},
+			{
+				type: 's',
+				value: "/feedback-shot",
+			}
+		]);
+
+		path = "/register/autocam"; 
+		this.sendOscMessage(path, [
+			{
+				type: 's',
+				value: '127.0.0.1',
+			},
+			{
+				type: 's',
+				value: this.config.feedbackPort,
+			},
+			{
+				type: 's',
+				value: "/feedback-autocam",
+			}
+		]);
+
+		path = "/register/defaultProfile"; 
+		this.sendOscMessage(path, [
+			{
+				type: 's',
+				value: '127.0.0.1',
+			},
+			{
+				type: 's',
+				value: this.config.feedbackPort,
+			},
+			{
+				type: 's',
+				value: "/feedback-profile",
+			}
+		]);
+	}
+
+	init_osc () {
+
+		//Init. OSC to return state from Gabin to companion to update button colors and variables.
+		if (this.connecting) {
+			this.log('info', 'Already connecting..');
+			return;
+		}
+
+		this.log('info', 'Connecting to Gabin');
+
+		this.oscUdp = new osc.UDPPort({
+			localAddress: '0.0.0.0',
+			localPort: this.config.feedbackPort,
+			address: this.config.host,
+			port: this.config.port,
+			metadata: true,
+		})
+
+		this.connecting = true
+		this.log('info', 'opening')
+		this.oscUdp.open()
+		this.log('info', 'open')
+
+		this.registerToGabin();
+
+		this.oscUdp.on('error', (err) => {
+			this.log('error', 'Error: ' + err.message)
+			console.log('error', 'Error: ' + err.message)
+			this.connecting = false
+			this.updateStatus(ConnectionFailure, "Can't connect to Gabin")
+			if (err.code == 'ECONNREFUSED') {
+				this.qSocket.removeAllListeners()
+				console.log('error', 'ECONNREFUSED')
+			}
+		})
+
+		this.oscUdp.on('close', () => {
+			console.log('debug', 'Connection to Gabin Closed')
+			this.connecting = false
+			this.updateStatus(ConnectionFailure,'closed')
+		})
+
+		this.oscUdp.on('ready', () => {
+			this.connecting = false
+			this.log('info', 'Connected to Gabin:' + this.config.host)
+			console.log('info', 'Connected to Gabin:' + this.config.host)
+
+			this.updateStatus('ok')
+		})
+
+		this.oscUdp.on('message', (message) => {
+
+			if (message.address == "/feedback-gabin-is-ready") {
+				console.log("Update is ready value");
+				if (message.args[0]['value'] == "true"){
+					this.setVariableValues({'GabinIsReady': true});
+				}else{
+					this.setVariableValues({'GabinIsReady': false});
+				}
+
+			}
+			console.log('On value back');
+			console.log(message);
+			//this.processMessage(message)
+		});
+	}
+
 	// When module gets deleted
 	async destroy() {
 		this.log('debug', 'destroy')
@@ -41,22 +166,148 @@ class OSCInstance extends InstanceBase {
 			},
             {
 				type: 'textinput',
-				id: 'serverport',
-                label: 'Reply Port',
+				id: 'feedbackPort',
+                label: 'Feedback Port',
 				width: 4,
 				regex: Regex.PORT,
 			}
 		]
 	}
 
+	sendOscMessage = (path, args) => {
+		this.log('debug', `Sending OSC ${this.config.host}:${this.config.port} ${path}`)
+		this.log('debug', `Sending Args ${JSON.stringify(args)}`)
+		this.oscSend(this.config.host, this.config.port, path, args)
+	}
+
 	updateActions() {
-		const sendOscMessage = (path, args) => {
-			this.log('debug', `Sending OSC ${this.config.host}:${this.config.port} ${path}`)
-			this.log('debug', `Sending Args ${JSON.stringify(args)}`)
-			this.oscSend(this.config.host, this.config.port, path, args)
-		}
+		var sendOscMessage = this.sendOscMessage; 
 
 		this.setActionDefinitions({
+			gabin_on: {
+				name: 'Start Gabin',
+				options: [],
+				callback: async (event) => {
+					var path = "/gabin/on"; 
+					sendOscMessage(path, []);
+				}
+			},
+			gabin_off: {
+				name: 'Stop Gabin',
+				options: [],
+				callback: async (event) => {
+					var path = "/gabin/off"; 
+					sendOscMessage(path, []);
+				}
+			},
+			gabin_scene: {
+				name: 'Send current scene to Gabin',
+				options: [
+					{
+						type: 'textinput',
+						label: 'Name of your scene',
+						id: 'scene',
+						default: 'NAME_OF_YOUR_SCENE',
+						useVariables: true,
+					},
+				],
+				callback: async (event) => {
+					const scene = await this.parseVariablesInString(event.options.scene)
+					var path = "/scene/"+scene; 
+					sendOscMessage(path, []);
+				}
+			},
+			gabin_source: {
+				name: 'Trigger a specific shot',
+				options: [
+					{
+						type: 'textinput',
+						label: 'Name of your source',
+						id: 'source',
+						default: 'NAME_OF_YOUR_SOURCE',
+						useVariables: true,
+					},
+				],
+				callback: async (event) => {
+					const source = await this.parseVariablesInString(event.options.source)
+					var path = "/source/"+scene; 
+					sendOscMessage(path, []);
+				}
+			},
+			gabin_mic: {
+				name: 'Toggle mic availability',
+				options: [
+					{
+						type: 'textinput',
+						label: 'Name of your mic',
+						id: 'mic',
+						default: 'NAME_OF_YOUR_MIC',
+						useVariables: true,
+					},
+					{
+						type: 'textinput',
+						label: 'State (1 or 0 or variable)',
+						id: 'state',
+						default: '0',
+						useVariables: true,
+					}
+				],
+				callback: async (event) => {
+					const mic = await this.parseVariablesInString(event.options.mic);
+					const state = await this.parseVariablesInString(event.options.state);
+					var path = "/mic/"+mic; 
+					sendOscMessage(path, [
+						{
+							type: 'i',
+							value: parseInt(state),
+						},
+					]);
+				}
+			},
+			gabin_autocam: {
+				name: 'Toggle autocam',
+				options: [
+					{
+						type: 'textinput',
+						label: 'State (1 or 0 or variable)',
+						id: 'state',
+						default: '0',
+						useVariables: true,
+					}
+				],
+				callback: async (event) => {
+					const state = await this.parseVariablesInString(event.options.state);
+					var path = "/autocam"; 
+					sendOscMessage(path, [
+						{
+							type: 'i',
+							value: parseInt(state),
+						},
+					]);
+				}
+			},
+			gabin_update_is_ready: {
+				name: 'Update is-ready value',
+				options: [],
+				callback: async (event) => {
+					var path = "/gabin/is-ready"; 
+					sendOscMessage(path, [
+						{
+							type: 's',
+							value: '127.0.0.1',
+						},
+						{
+							type: 's',
+							value: this.config.feedbackPort,
+						},
+						{
+							type: 's',
+							value: "/feedback-gabin-is-ready",
+						}
+					]);
+				}
+			}
+			/*,
 			send_blank: {
 				name: 'Send message without arguments',
 				options: [
@@ -269,8 +520,21 @@ class OSCInstance extends InstanceBase {
 					])
 				},
 			},
+			*/
 		})
 	}
+
+	init_variable (){
+		const variables = [];
+		variables.push({variableId: 'GabinIsReady', name: 'Gabin Is Ready'});
+
+		this.setVariableDefinitions(variables);
+
+		this.setVariableValues({
+            'GabinIsReady': '',
+		});
+	}
+
 }
 
 runEntrypoint(OSCInstance, UpgradeScripts)

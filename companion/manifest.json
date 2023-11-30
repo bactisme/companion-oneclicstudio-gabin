@@ -1,7 +1,7 @@
 {
-	"id": "generic-osc",
-	"name": "generic-osc",
-	"shortname": "osc",
+	"id": "companion-oneclicstudio-gabin",
+	"name": "companion-oneclicstudio-gabin",
+	"shortname": "Gabin",
 	"description": "Gabin (autoswitch tool for OBS, VMIX, OSC. Based on the generic OSC plugin)",
 	"version": "0.0.0",
 	"license": "MIT",

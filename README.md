@@ -1,4 +1,4 @@
-# 
+# Companion Gabin Connection module
 
 Fully based on companion-module-generic-osc, I own no copyright on neither companion nor gabin, nor the companion-module-generic-osc code
 
