@@ -1,7 +1,7 @@
 {
 	"name": "generic-osc",
 	"version": "2.2.0",
-	"main": "osc.js",
+	"main": "gabin.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"format": "prettier -w ."

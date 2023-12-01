@@ -123,6 +123,9 @@ class OSCInstance extends InstanceBase {
 
 		this.oscUdp.on('message', (message) => {
 
+			console.log('Got value ');
+			console.log(message);
+
 			if (message.address == "/feedback-gabin-is-ready") {
 				console.log("Update is ready value");
 				if (message.args[0]['value'] == "true"){
@@ -130,11 +133,20 @@ class OSCInstance extends InstanceBase {
 				}else{
 					this.setVariableValues({'GabinIsReady': false});
 				}
-
 			}
-			console.log('On value back');
-			console.log(message);
-			//this.processMessage(message)
+
+			if (message.address == '/feedback-shot'){
+				this.setVariableValues({
+					'GabinCurrentShot': message.args[0]['value']
+				});
+			}
+
+			if (message.address == '/feedback-autocam'){
+				this.setVariableValues({
+					'GabinAutocam': message.args[0]['value']
+				});
+			}
+
 		});
 	}
 
@@ -180,8 +192,27 @@ class OSCInstance extends InstanceBase {
 		this.oscSend(this.config.host, this.config.port, path, args)
 	}
 
+	sendOscGetReadyStatus () {
+		var path = "/gabin/is-ready"; 
+		this.sendOscMessage(path, [
+			{
+				type: 's',
+				value: '127.0.0.1',
+			},
+			{
+				type: 's',
+				value: this.config.feedbackPort,
+			},
+			{
+				type: 's',
+				value: "/feedback-gabin-is-ready",
+			}
+		]);
+	}
+
 	updateActions() {
 		var sendOscMessage = this.sendOscMessage; 
+		var self = this;
 
 		this.setActionDefinitions({
 			gabin_on: {
@@ -189,7 +220,16 @@ class OSCInstance extends InstanceBase {
 				options: [],
 				callback: async (event) => {
 					var path = "/gabin/on"; 
-					sendOscMessage(path, []);
+					self.sendOscMessage(path, []);
+					self.registerToGabin();
+					self.sendOscGetReadyStatus();
+
+					// TODO 
+					// suspect that autocam is on, but it's wrong.
+					self.setVariableValues({
+						'GabinAutocam': "true"
+					});
+	
 				}
 			},
 			gabin_off: {
@@ -214,7 +254,7 @@ class OSCInstance extends InstanceBase {
 				callback: async (event) => {
 					const scene = await this.parseVariablesInString(event.options.scene)
 					var path = "/scene/"+scene; 
-					sendOscMessage(path, []);
+					self.sendOscMessage(path, []);
 				}
 			},
 			gabin_source: {
@@ -229,9 +269,9 @@ class OSCInstance extends InstanceBase {
 					},
 				],
 				callback: async (event) => {
-					const source = await this.parseVariablesInString(event.options.source)
-					var path = "/source/"+scene; 
-					sendOscMessage(path, []);
+					const source = await this.parseVariablesInString(event.options.source);
+					var path = "/source/"+source;
+					self.sendOscMessage(path, []);
 				}
 			},
 			gabin_mic: {
@@ -256,7 +296,7 @@ class OSCInstance extends InstanceBase {
 					const mic = await this.parseVariablesInString(event.options.mic);
 					const state = await this.parseVariablesInString(event.options.state);
 					var path = "/mic/"+mic; 
-					sendOscMessage(path, [
+					self.sendOscMessage(path, [
 						{
 							type: 'i',
 							value: parseInt(state),
@@ -277,8 +317,8 @@ class OSCInstance extends InstanceBase {
 				],
 				callback: async (event) => {
 					const state = await this.parseVariablesInString(event.options.state);
-					var path = "/autocam"; 
-					sendOscMessage(path, [
+					var path = "/autocam";  
+					self.sendOscMessage(path, [
 						{
 							type: 'i',
 							value: parseInt(state),
@@ -290,21 +330,7 @@ class OSCInstance extends InstanceBase {
 				name: 'Update is-ready value',
 				options: [],
 				callback: async (event) => {
-					var path = "/gabin/is-ready"; 
-					sendOscMessage(path, [
-						{
-							type: 's',
-							value: '127.0.0.1',
-						},
-						{
-							type: 's',
-							value: this.config.feedbackPort,
-						},
-						{
-							type: 's',
-							value: "/feedback-gabin-is-ready",
-						}
-					]);
+					self.sendOscGetReadyStatus();
 				}
 			}
 			/*,
@@ -527,11 +553,15 @@ class OSCInstance extends InstanceBase {
 	init_variable (){
 		const variables = [];
 		variables.push({variableId: 'GabinIsReady', name: 'Gabin Is Ready'});
+		variables.push({variableId: 'GabinCurrentShot', name: 'Gabin Current Shot'});		
+		variables.push({variableId: 'GabinAutocam', name: 'Gabin last state'});		
 
 		this.setVariableDefinitions(variables);
 
 		this.setVariableValues({
             'GabinIsReady': '',
+			'GabinCurrentShot': '',
+			'GabinAutocam': ''
 		});
 	}
 
