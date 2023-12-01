@@ -1,6 +1,8 @@
 # Companion Gabin Connection module
 
-Fully based on companion-module-generic-osc, I own no copyright on neither companion nor gabin, nor the companion-module-generic-osc code
+Fully based on companion-module-generic-osc, I own no copyright on neither companion nor gabin, nor the companion-module-generic-osc code.
+
+Grab [Gabin cam auto switcher here](https://github.com/one-click-studio/gabin).
 
 Gabin can be piloted from the osc generic module, but this module add feedbacks and convenient functions
 
