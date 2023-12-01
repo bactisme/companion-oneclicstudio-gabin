@@ -11,3 +11,8 @@ This module encapsulate Gabin OSC command
 - Send current scene to Gabin
 - Trigger a specific shot
 - Toggle mic availability
+- Update GabinIsReady value
+
+**Available Variables**
+
+- IsGabinReady
