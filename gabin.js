@@ -26,7 +26,7 @@ class OSCInstance extends InstanceBase {
 		this.sendOscMessage(path, [
 			{
 				type: 's',
-				value: '127.0.0.1',
+				value: this.config.feedbackHost,
 			},
 			{
 				type: 's',
@@ -42,7 +42,7 @@ class OSCInstance extends InstanceBase {
 		this.sendOscMessage(path, [
 			{
 				type: 's',
-				value: '127.0.0.1',
+				value: this.config.feedbackHost,
 			},
 			{
 				type: 's',
@@ -58,7 +58,7 @@ class OSCInstance extends InstanceBase {
 		this.sendOscMessage(path, [
 			{
 				type: 's',
-				value: '127.0.0.1',
+				value: this.config.feedbackHost,
 			},
 			{
 				type: 's',
@@ -168,6 +168,7 @@ class OSCInstance extends InstanceBase {
 				label: 'Target IP',
 				width: 8,
 				regex: Regex.IP,
+				'default': '127.0.0.1'
 			},
 			{
 				type: 'textinput',
@@ -175,13 +176,23 @@ class OSCInstance extends InstanceBase {
 				label: 'Target Port',
 				width: 4,
 				regex: Regex.PORT,
+				'default': '32123'
 			},
             {
+				type: 'textinput',
+				id: 'feedbackHost',
+                label: 'Feedback IP',
+				width: 8,
+				regex: Regex.IP,
+				'default': '127.0.0.1'
+			},
+			{
 				type: 'textinput',
 				id: 'feedbackPort',
                 label: 'Feedback Port',
 				width: 4,
 				regex: Regex.PORT,
+				'default': '32124'
 			}
 		]
 	}
@@ -197,7 +208,7 @@ class OSCInstance extends InstanceBase {
 		this.sendOscMessage(path, [
 			{
 				type: 's',
-				value: '127.0.0.1',
+				value: this.config.feedbackHost,
 			},
 			{
 				type: 's',
@@ -215,6 +226,13 @@ class OSCInstance extends InstanceBase {
 		var self = this;
 
 		this.setActionDefinitions({
+			gabin_register: {
+				name: 'Subscribe to Gabin state',
+				options: [],
+				callback: async (event) => {
+					self.registerToGabin();
+				}
+			},
 			gabin_on: {
 				name: 'Start Gabin',
 				options: [],
