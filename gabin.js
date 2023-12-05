@@ -12,7 +12,7 @@ class OSCInstance extends InstanceBase {
 
 		this.updateStatus('ok');
 
-		this.updateActions(); // export actions
+		this.updateActions();
 
 		this.init_variable();
 
@@ -20,6 +20,9 @@ class OSCInstance extends InstanceBase {
 
 	}
 
+	/**
+	 * Subscribe to Gabin state
+	 */
 	registerToGabin() {
 		var path = "/register/shot"; 
 
@@ -82,7 +85,7 @@ class OSCInstance extends InstanceBase {
 		this.log('info', 'Connecting to Gabin');
 
 		this.oscUdp = new osc.UDPPort({
-			localAddress: '0.0.0.0',
+			localAddress: this.config.feedbackHost,
 			localPort: this.config.feedbackPort,
 			address: this.config.host,
 			port: this.config.port,
@@ -94,6 +97,7 @@ class OSCInstance extends InstanceBase {
 		this.oscUdp.open()
 		this.log('info', 'open')
 
+		// setup callbacks
 		this.registerToGabin();
 
 		this.oscUdp.on('error', (err) => {
@@ -123,7 +127,7 @@ class OSCInstance extends InstanceBase {
 
 		this.oscUdp.on('message', (message) => {
 
-			console.log('Got value ');
+			console.log('=> Callbacks');
 			console.log(message);
 
 			if (message.address == "/feedback-gabin-is-ready") {
@@ -181,7 +185,7 @@ class OSCInstance extends InstanceBase {
             {
 				type: 'textinput',
 				id: 'feedbackHost',
-                label: 'Feedback IP',
+                label: 'Feedback IP (This module)',
 				width: 8,
 				regex: Regex.IP,
 				'default': '127.0.0.1'
@@ -221,6 +225,9 @@ class OSCInstance extends InstanceBase {
 		]);
 	}
 
+	/**
+	 * Set module actions
+	 */
 	updateActions() {
 		var sendOscMessage = this.sendOscMessage; 
 		var self = this;
@@ -242,8 +249,8 @@ class OSCInstance extends InstanceBase {
 					self.registerToGabin();
 					self.sendOscGetReadyStatus();
 
-					// TODO 
-					// suspect that autocam is on, but it's wrong.
+					// TODO Update when Gabin have more internal state reporting capabilities
+					// Today, it suspect that autocam is on, but it's wrong.
 					self.setVariableValues({
 						'GabinAutocam': "true"
 					});
@@ -327,7 +334,7 @@ class OSCInstance extends InstanceBase {
 				options: [
 					{
 						type: 'textinput',
-						label: 'State (1 or 0 or variable)',
+						label: 'State : 1 (ON) or 0 (OFF) or variable)',
 						id: 'state',
 						default: '0',
 						useVariables: true,
